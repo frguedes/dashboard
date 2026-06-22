@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="120">
+<title>Genesis GL1 · Crisis Room</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --bg:      #080810;
+    --bg2:     #0f0f1a;
+    --bg3:     #161625;
+    --purple:  #A100FF;
+    --violet:  #7500C0;
+    --dark-p:  #460073;
+    --green:   #00cc66;
+    --amber:   #FF9900;
+    --red:     #CC0000;
+    --red-br:  #ff3333;
+    --blue:    #224BFF;
+    --text:    #e8e8f0;
+    --muted:   #8888aa;
+    --border:  #2a2a40;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text);
+               font-family:system-ui,-apple-system,sans-serif; }
+
+  /* ── layout ── */
+  .shell { display:grid; height:100vh;
+    grid-template-rows: 72px 1fr 40%;
+    grid-template-areas: "hdr" "mid" "bot"; }
+
+  /* ── header ── */
+  .hdr { grid-area:hdr; display:flex; align-items:center; justify-content:space-between;
+          padding:0 28px; border-bottom:3px solid var(--purple); background:var(--bg2); }
+  .hdr-left { display:flex; align-items:center; gap:20px; }
+  .acn-logo { color:var(--purple); font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+  .prog-title { font-size:20px; font-weight:700; color:var(--text); }
+  .hdr-mid { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .countdown-label { font-size:11px; font-weight:600; letter-spacing:2px; color:var(--muted); text-transform:uppercase; }
+  .countdown { font-size:34px; font-weight:800; letter-spacing:2px; color:#FF9900;
+                text-shadow:0 0 20px #FF990088; font-variant-numeric:tabular-nums; }
+  .hdr-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .upd { font-size:11px; color:var(--muted); }
+  .total-target { font-size:14px; font-weight:700; color:var(--green); }
+
+  /* ── blocked badge header ── */
+  .blocked-badge { display:inline-flex; align-items:center; gap:8px;
+                    background:var(--red); padding:6px 14px; border-radius:4px;
+                    font-size:14px; font-weight:800; color:white;
+                    animation:pulse-red 1.2s ease-in-out infinite; cursor:pointer; }
+  @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 0 #cc000088} 50%{box-shadow:0 0 0 10px #cc000000} }
+
+  /* ── mid: 3 stream cards ── */
+  .mid { grid-area:mid; display:grid; grid-template-columns:1fr 1fr 1fr;
+          gap:2px; background:var(--border); overflow:hidden; }
+  .stream-card { background:var(--bg2); padding:16px 18px; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+  .stream-title { font-size:17px; font-weight:800; color:var(--purple); text-transform:uppercase; letter-spacing:1px; }
+  .stream-stats { display:flex; gap:16px; align-items:center; }
+  .stat-big { font-size:28px; font-weight:800; color:var(--green); line-height:1; }
+  .stat-label { font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; }
+  .stat-block { display:flex; flex-direction:column; gap:2px; }
+  .stat-sep { width:1px; height:36px; background:var(--border); }
+
+  /* xp bar */
+  .xp-track { width:100%; height:18px; background:#1a1a2e; border-radius:9px; overflow:hidden; position:relative; }
+  .xp-fill  { height:100%; border-radius:9px; background:linear-gradient(90deg,var(--violet),var(--purple));
+               box-shadow:0 0 12px var(--purple)88; transition:width 1.5s cubic-bezier(.4,0,.2,1); }
+  .xp-pct   { position:absolute; right:8px; top:50%; transform:translateY(-50%);
+               font-size:11px; font-weight:800; color:white; }
+
+  /* pipeline bar (RICEFWs) */
+  .pipe-track { width:100%; height:18px; background:#1a1a2e; border-radius:9px; overflow:hidden;
+                 display:flex; border-radius:9px; }
+  .pipe-seg { height:100%; transition:width 1.5s cubic-bezier(.4,0,.2,1); }
+  .pipe-done { background:var(--green); }
+  .pipe-ready{ background:#00aa44; }
+  .pipe-test { background:var(--amber); }
+  .pipe-dev  { background:var(--blue); }
+  .pipe-ef   { background:#7B3F00; }
+  .pipe-ns   { background:#333355; }
+  .pipe-legend { display:flex; gap:10px; flex-wrap:wrap; }
+  .leg { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--muted); }
+  .leg-dot { width:8px; height:8px; border-radius:2px; }
+
+  /* stream open items */
+  .open-list { flex:1; overflow:hidden; display:flex; flex-direction:column; gap:3px; }
+  .open-row { display:grid; grid-template-columns:10px 1fr 100px 90px 110px;
+               gap:6px; align-items:center; padding:6px 8px; background:var(--bg3);
+               border-radius:3px; font-size:15px; border-left:2px solid transparent; }
+  .open-row:hover { background:#1a1a2e; }
+
+  /* ── bottom: blocked + UAT bugs ── */
+  .bot { grid-area:bot; display:grid; grid-template-columns:3fr 2fr;
+          gap:2px; background:var(--border); overflow:hidden; }
+  .blocked-panel { background:var(--bg2); padding:14px 18px; overflow:hidden; display:flex; flex-direction:column; gap:8px; }
+  .bugs-panel    { background:var(--bg2); padding:14px 18px; overflow:hidden; display:flex; flex-direction:column; gap:8px; }
+  .panel-title { font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+  .panel-title.red  { color:var(--red-br); }
+  .panel-title.amber{ color:var(--amber); }
+
+  .blocked-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:3px; }
+  .blocked-row { display:grid; grid-template-columns:10px 90px 1fr 110px 90px 140px;
+                  gap:6px; align-items:center; padding:7px 8px;
+                  background:#1a0a0a; border-radius:3px; font-size:15px;
+                  border-left:3px solid var(--red); }
+  .b-stream { font-size:11px; font-weight:700; background:var(--dark-p); color:white;
+               padding:2px 6px; border-radius:3px; text-align:center; white-space:nowrap; }
+  .b-nome  { color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .b-owner { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .b-badge { font-size:11px; padding:2px 6px; border-radius:3px; }
+  .b-dl    { font-size:11px; }
+
+  /* UAT bugs */
+  .bug-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:3px; }
+  .bug-row { display:grid; grid-template-columns:40px 80px 1fr 100px 80px 80px;
+              gap:5px; align-items:center; padding:5px 8px;
+              background:var(--bg3); border-radius:3px; font-size:12px; }
+  .bug-est { font-size:10px; padding:2px 5px; border-radius:3px; white-space:nowrap; }
+  .no-bugs { color:var(--green); font-size:12px; padding:10px 0; }
+  .bug-add-hint { font-size:10px; color:var(--muted); padding:4px 0; border-top:1px solid var(--border); }
+
+  /* badges */
+  .badge-done    { background:#004d22; color:#00ff88; border:1px solid #00cc66; border-radius:3px; padding:2px 7px; font-size:11px; font-weight:700; }
+  .badge-ready   { background:#003322; color:#00cc88; border:1px solid #009966; border-radius:3px; padding:2px 7px; font-size:11px; font-weight:700; }
+  .badge-testing { background:#332200; color:#ffaa00; border:1px solid #ff9900; border-radius:3px; padding:2px 7px; font-size:11px; font-weight:700; }
+  .badge-indev   { background:#00112a; color:#4488ff; border:1px solid #224bff; border-radius:3px; padding:2px 7px; font-size:11px; font-weight:700; }
+  .badge-blocked { background:#2a0000; color:#ff4444; border:1px solid #cc0000; border-radius:3px; padding:2px 7px; font-size:11px; font-weight:700; animation:pulse-red 1.2s infinite; }
+  .badge-ns      { background:#1a1a22; color:#666688; border:1px solid #333355; border-radius:3px; padding:2px 7px; font-size:11px; font-weight:700; }
+
+  /* crit dots */
+  .crit-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .crit-high { background:var(--red-br); box-shadow:0 0 4px var(--red); }
+  .crit-med  { background:var(--amber); }
+  .crit-low  { background:var(--muted); }
+
+  /* deadline colors */
+  .dl-over   { color:#ff4444; font-weight:700; }
+  .dl-urgent { color:#ff9900; font-weight:700; }
+  .dl-soon   { color:#ffcc44; }
+  .dl-ok     { color:var(--muted); }
+  .dl-none   { color:#333355; }
+
+  /* prio bugs */
+  .prio-p1 { background:#cc0000; color:white; font-weight:800; padding:2px 6px; border-radius:3px; text-align:center; font-size:11px; animation:pulse-red 1s infinite; }
+  .prio-p2 { background:#ff9900; color:#000; font-weight:800; padding:2px 6px; border-radius:3px; text-align:center; font-size:11px; }
+  .prio-p3 { background:#224bff; color:white; font-weight:800; padding:2px 6px; border-radius:3px; text-align:center; font-size:11px; }
+  .bug-row-p1      { background:#200a0a; border-left:3px solid var(--red); animation:pulse-border 1.5s ease-in-out infinite; }
+  .bug-row-blocked { background:#200a0a; border-left:3px solid var(--red); }
+  .prio-ns { background:#333355; color:#8888aa; padding:2px 6px; border-radius:3px; text-align:center; font-size:11px; }
+  .bug-eta { font-size:11px; }
+  @keyframes pulse-border { 0%,100%{border-left-color:#cc0000} 50%{border-left-color:#ff4444} }
+
+  /* EUT subsection */
+  .eut-section { border-top:1px solid var(--border); margin-top:4px; padding-top:6px; }
+  .eut-header  { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .eut-title   { font-size:12px; font-weight:800; color:var(--amber); text-transform:uppercase; letter-spacing:1px; }
+  .eut-stats   { font-size:11px; color:var(--muted); }
+
+  /* tabs */
+  .tab-bar { display:flex; gap:4px; margin-bottom:6px; }
+  .tab { padding:5px 14px; border-radius:4px 4px 0 0; font-size:12px; font-weight:700;
+          cursor:pointer; border:none; background:var(--bg3); color:var(--muted);
+          text-transform:uppercase; letter-spacing:1px; }
+  .tab.active { background:var(--dark-p); color:white; }
+  .tab-panel { display:none; flex:1; overflow-y:auto; flex-direction:column; gap:3px; }
+  .tab-panel.active { display:flex; }
+
+  /* owner cards */
+  .owner-card { background:var(--bg3); border-radius:4px; border-left:3px solid var(--violet);
+                 padding:6px 10px; display:flex; flex-direction:column; gap:4px; }
+  .owner-card.owner-urgent { border-left-color:var(--amber); }
+  .owner-hdr { display:flex; align-items:center; gap:10px; }
+  .owner-name { font-size:13px; font-weight:800; color:var(--text); min-width:120px; }
+  .owner-count { font-size:11px; color:var(--muted); }
+  .owner-tags { display:flex; gap:5px; margin-left:auto; }
+  .owner-tag { font-size:10px; font-weight:700; padding:1px 6px; border-radius:3px; }
+  .tag-bloq { background:#2a0000; color:#ff4444; border:1px solid #cc0000; }
+  .tag-high { background:#2a1500; color:#ff9900; border:1px solid #ff6600; }
+  .owner-items { display:flex; flex-direction:column; gap:2px; padding-left:8px; }
+  .owner-item { display:grid; grid-template-columns:10px 85px 1fr 95px 130px;
+                 gap:6px; align-items:center; font-size:14px; padding:3px 4px; }
+  .oi-stream { font-size:10px; font-weight:700; background:var(--dark-p); color:white;
+                padding:2px 6px; border-radius:3px; text-align:center; white-space:nowrap; }
+  .oi-nome   { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+  .oi-badge  { font-size:11px; padding:2px 6px; border-radius:3px; }
+  .oi-dl     { font-size:12px; }
+
+  /* achievement overlay */
+  .ach-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:#00000099;
+                  z-index:100; display:flex; align-items:center; justify-content:center;
+                  opacity:0; pointer-events:none; transition:opacity .4s; }
+  .ach-overlay.show { opacity:1; pointer-events:auto; }
+  .ach-card { background:linear-gradient(135deg,#1a0033,#0a0018);
+               border:3px solid var(--purple); border-radius:16px;
+               padding:40px 60px; text-align:center; max-width:600px;
+               box-shadow:0 0 60px var(--purple)66; }
+  .ach-emoji { font-size:60px; margin-bottom:12px; }
+  .ach-name  { font-size:32px; font-weight:800; color:var(--purple); margin-bottom:6px; }
+  .ach-item  { font-size:16px; color:var(--muted); margin-bottom:4px; max-width:400px; }
+  .ach-state { font-size:18px; font-weight:700; color:var(--green); }
+  .ach-btn   { margin-top:20px; background:var(--purple); color:white; border:none;
+                padding:10px 28px; border-radius:6px; font-size:14px; font-weight:700;
+                cursor:pointer; }
+  .ach-counter { position:fixed; bottom:12px; right:16px; background:var(--purple);
+                  color:white; padding:8px 16px; border-radius:20px; font-size:13px;
+                  font-weight:700; cursor:pointer; z-index:50; display:none;
+                  animation:pulse-red 2s infinite; }
+  .o-nome  { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+  .o-owner { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted); font-size:13px; }
+  .o-badge { font-size:12px; padding:2px 6px; border-radius:3px; }
+  .o-dl    { font-size:13px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* ── mascot ── */
+  #mascot-wrap {
+    position:fixed; bottom:0; z-index:1000;
+    width:82px; pointer-events:none;
+  }
+  #mascot-flipper {
+    pointer-events:auto; cursor:pointer; user-select:none;
+    transition: transform 0.25s ease;
+  }
+  #mascot-flipper.flipped { transform: scaleX(-1); }
+  #mascot-svg {
+    width:82px; height:auto; display:block;
+    animation: mfloat 3.2s ease-in-out infinite;
+    filter: drop-shadow(0 4px 14px rgba(161,0,255,0.35));
+    transition: filter 0.3s;
+  }
+  #mascot-flipper:hover #mascot-svg { filter: drop-shadow(0 6px 20px rgba(161,0,255,0.65)); }
+  #mascot-svg.celebrating {
+    animation: mcelebrate 1.6s cubic-bezier(.4,0,.2,1) forwards !important;
+  }
+  #arm-r { transform-origin:75px 88px; transform-box:fill-box; }
+  #arm-l { transform-origin:25px 88px; transform-box:fill-box; }
+  #mascot-svg.celebrating #arm-r { animation: arm-wave-r 1.6s ease-in-out; }
+  #mascot-svg.celebrating #arm-l { animation: arm-wave-l 1.6s ease-in-out; }
+  #leg-l, #leg-r { transform-box:fill-box; transform-origin:top center; }
+  #mascot-flipper.walking #leg-l { animation: walk-leg-l 0.38s ease-in-out infinite; }
+  #mascot-flipper.walking #leg-r { animation: walk-leg-r 0.38s ease-in-out infinite; }
+  #acn-symbol { transform-box:fill-box; transform-origin:center; }
+  #mascot-flipper.flipped #acn-symbol { transform: scaleX(-1); }
+  #mascot-tip {
+    position:absolute; bottom:88px; left:50%;
+    transform:translateX(-50%);
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:6px 11px; font-size:11px; color:var(--text);
+    white-space:nowrap; pointer-events:none;
+    opacity:0; transition:opacity 0.25s; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+  }
+  #mascot-flipper:hover + #mascot-tip { opacity:1; }
+  #mascot-bubble {
+    display:none; position:absolute; bottom:148px; left:41px;
+    transform:translateX(-50%);
+    background:#fff; border:2px solid #A100FF; border-radius:14px;
+    padding:8px 13px; font-size:12px; font-weight:700; color:#111;
+    white-space:normal; text-align:center; max-width:180px; min-width:120px;
+    box-shadow:0 6px 24px rgba(161,0,255,0.35); pointer-events:none;
+    z-index:1002; line-height:1.4;
+  }
+  #mascot-bubble::after {
+    content:''; position:absolute; bottom:-11px; left:50%;
+    transform:translateX(-50%);
+    border:9px solid transparent;
+    border-top-color:#A100FF; border-bottom:none;
+  }
+  #mascot-bubble::before {
+    content:''; position:absolute; bottom:-8px; left:50%;
+    transform:translateX(-50%);
+    border:7px solid transparent;
+    border-top-color:#fff; border-bottom:none;
+    z-index:1;
+  }
+  @keyframes bubble-pop {
+    0%   { transform:translateX(-50%) scale(0.4); opacity:0; }
+    65%  { transform:translateX(-50%) scale(1.08); opacity:1; }
+    100% { transform:translateX(-50%) scale(1); opacity:1; }
+  }
+  @keyframes bubble-fade {
+    0%   { opacity:1; transform:translateX(-50%) scale(1); }
+    100% { opacity:0; transform:translateX(-50%) scale(0.85); }
+  }
+  .face-grp { display:none; }
+  .face-grp.active { display:block; }
+  @keyframes mfloat {
+    0%,100% { transform:translateY(0); }
+    50%      { transform:translateY(-7px); }
+  }
+  @keyframes walk-bob {
+    0%,100% { transform:translateY(0); }
+    50%      { transform:translateY(-3px); }
+  }
+  @keyframes mcelebrate {
+    0%   { transform:translateY(0) rotate(0deg) scale(1); }
+    15%  { transform:translateY(-24px) rotate(-9deg) scale(1.12); }
+    30%  { transform:translateY(-8px)  rotate(9deg)  scale(1.06); }
+    50%  { transform:translateY(-20px) rotate(-6deg) scale(1.12); }
+    65%  { transform:translateY(-5px)  rotate(5deg)  scale(1.03); }
+    80%  { transform:translateY(-10px) rotate(-2deg) scale(1.06); }
+    100% { transform:translateY(0) rotate(0deg) scale(1); }
+  }
+  @keyframes arm-wave-r {
+    0%,100% { transform:rotate(0deg); }
+    20%  { transform:rotate(-52deg); }
+    45%  { transform:rotate(-18deg); }
+    65%  { transform:rotate(-48deg); }
+    85%  { transform:rotate(-12deg); }
+  }
+  @keyframes arm-wave-l {
+    0%,100% { transform:rotate(0deg); }
+    20%  { transform:rotate(52deg); }
+    45%  { transform:rotate(18deg); }
+    65%  { transform:rotate(48deg); }
+    85%  { transform:rotate(12deg); }
+  }
+  @keyframes walk-leg-l {
+    0%,100% { transform:rotate(0deg); }
+    25%  { transform:rotate(-14deg); }
+    75%  { transform:rotate(14deg); }
+  }
+  @keyframes walk-leg-r {
+    0%,100% { transform:rotate(0deg); }
+    25%  { transform:rotate(14deg); }
+    75%  { transform:rotate(-14deg); }
+  }
+  @keyframes mjump {
+    0%   { transform:translateY(0); }
+    30%  { transform:translateY(-28px); }
+    55%  { transform:translateY(-22px); }
+    80%  { transform:translateY(-4px); }
+    100% { transform:translateY(0); }
+  }
+  @keyframes mhandstand {
+    0%   { transform:translateY(0) rotate(0deg); }
+    20%  { transform:translateY(0) rotate(180deg); }
+    70%  { transform:translateY(0) rotate(180deg); }
+    90%  { transform:translateY(0) rotate(0deg); }
+    100% { transform:translateY(0) rotate(0deg); }
+  }
+  #mascot-svg.jumping     { animation: mjump      0.75s cubic-bezier(.4,0,.2,1) forwards !important; }
+  #mascot-svg.handstanding{ animation: mhandstand 2.6s  ease-in-out             forwards !important; }
+  /* ── mascot toggle button ── */
+  #mascot-toggle {
+    position:fixed; bottom:16px; left:16px; z-index:1001;
+    background:var(--bg3); border:1px solid var(--border);
+    color:var(--muted); font-size:11px; font-weight:700;
+    padding:5px 10px; border-radius:6px; cursor:pointer;
+    letter-spacing:0.5px; transition:all 0.2s; user-select:none;
+  }
+  #mascot-toggle:hover { border-color:#A100FF; color:var(--text); }
+  #mascot-toggle.off { opacity:0.4; }
+  @keyframes stat-poke {
+    0%,100% { transform:scale(1) rotate(0deg); }
+    35%  { transform:scale(1.45) rotate(9deg); }
+    65%  { transform:scale(0.88) rotate(-5deg); }
+  }
+  /* ── mascot carry tag ── */
+  .m-tag {
+    position:fixed; z-index:998; pointer-events:none;
+    background:#c00; color:white;
+    font-size:10px; font-weight:800; letter-spacing:0.4px;
+    padding:3px 8px; border-radius:4px;
+    white-space:nowrap; box-shadow:0 2px 10px rgba(0,0,0,0.55);
+  }
+  @keyframes tag-grab {
+    0%   { transform:translateY(12px) scale(0.2); opacity:0; }
+    100% { transform:translateY(0)    scale(1);   opacity:1; }
+  }
+  @keyframes tag-throw-r {
+    0%   { opacity:1; transform:rotate(0deg) translate(0,0); }
+    100% { opacity:0; transform:rotate(35deg) translate(90px,-70px); }
+  }
+  @keyframes tag-throw-l {
+    0%   { opacity:1; transform:rotate(0deg) translate(0,0); }
+    100% { opacity:0; transform:rotate(-35deg) translate(-90px,-70px); }
+  }
+  @keyframes star-spin {
+    0%   { transform:scale(1) rotate(0deg); opacity:1; }
+    50%  { transform:scale(1.4) rotate(20deg); opacity:0.8; }
+    100% { transform:scale(1) rotate(0deg); opacity:1; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-left">
+    <span class="acn-logo">Accenture</span>
+    <span class="prog-title">Genesis GL1 · Crisis Room</span>
+    <div class="blocked-badge" onclick="scrollToBlocked()" title="Ver todos os bloqueados">
+      🔒 4 BLOQUEADOS
+    </div>
+    <div class="blocked-badge" style="background:#224BFF;animation:none;" title="Bugs UAT">🐛 6 abertos · 57% done</div>
+  </div>
+  <div class="hdr-mid">
+    <div class="countdown-label">🚀 Go-Live GL1</div>
+    <div class="countdown" id="cd">—</div>
+  </div>
+  <div class="hdr-right">
+    <div class="total-target">✅ 91/113 Done + Ready UAT</div>
+    <div class="upd">Actualizado 22/06/2026 16:53</div>
+    
+  </div>
+</header>
+
+<!-- MID: 3 STREAM CARDS -->
+<section class="mid">
+
+  <!-- CORE SAP -->
+  <div class="stream-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="stream-title">Core SAP</span>
+      <span style="font-size:11px;color:var(--muted)">51 Done · 0 Ready UAT · 3 In Progress</span>
+    </div>
+    <div class="stream-stats">
+      <div class="stat-block">
+        <div class="stat-big">91%</div>
+        <div class="stat-label">Done + Ready</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--text)">51<span style="font-size:14px;color:var(--muted)">/56</span></div>
+        <div class="stat-label">Target fechados</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--red-br)">2</div>
+        <div class="stat-label">Bloqueados</div>
+      </div>
+    </div>
+    <div class="xp-track"><div class="xp-fill" id="xp-cs" style="width:0%"></div><span class="xp-pct">91%</span></div>
+    <div class="open-list">
+      <div class="open-row">
+          <span class="crit-dot crit-low"></span>
+          <span class="o-nome">Validações e substituições</span>
+          <span class="o-owner">Márcia Nunes</span>
+          <span class="badge-indev o-badge">IN PROGRESS</span>
+          <span class="o-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">Configuração entidades legais DRC 🔒</span>
+          <span class="o-owner">Ana Luísa Oliveira</span>
+          <span class="badge-blocked o-badge">BLOQUEADO</span>
+          <span class="o-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">Declaração de IVA (periódica e anual) 🔒</span>
+          <span class="o-owner">Ana Luísa Oliveira</span>
+          <span class="badge-blocked o-badge">BLOQUEADO</span>
+          <span class="o-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-med"></span>
+          <span class="o-nome">Validações e substituições</span>
+          <span class="o-owner">Márcia Nunes</span>
+          <span class="badge-indev o-badge">IN PROGRESS</span>
+          <span class="o-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">Necessidade de mapear os Centros de custo antigos e a divisã</span>
+          <span class="o-owner">Hugo Carvalho</span>
+          <span class="badge-indev o-badge">IN PROGRESS</span>
+          <span class="o-dl"><span class="dl-ok">2026-06-30</span></span>
+        </div>
+    </div>
+    <div class="eut-section">
+      <div class="eut-header">
+        <span class="eut-title">🎓 Formação EUT</span>
+        <span class="eut-stats">2/13 Done · 5 In Progress · <span style="color:var(--red-br);font-weight:700">6 Blocked</span></span>
+      </div>
+      <div class="open-list" style="max-height:80px;">
+        <div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">Atribuição e estabilização de acessos 🔒</span>
+          <span class="o-owner">Equipa técnica/ funcional</span>
+          <span class="badge-blocked o-badge">BLOQUEADO</span>
+          <span class="o-dl"><span class="dl-over">▲ 2026-06-12 (10d atraso)</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">Executar EUT 🔒</span>
+          <span class="o-owner">n/a</span>
+          <span class="badge-blocked o-badge">BLOQUEADO</span>
+          <span class="o-dl"><span class="dl-ok">2026-06-30</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-med"></span>
+          <span class="o-nome">Gerir continuamente EUT (ex: Marcar presença  participações, 🔒</span>
+          <span class="o-owner">n/a</span>
+          <span class="badge-blocked o-badge">BLOQUEADO</span>
+          <span class="o-dl"><span class="dl-ok">2026-06-30</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RICEFWs -->
+  <div class="stream-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="stream-title">RICEFWs</span>
+      <span style="font-size:11px;color:var(--muted)">32 Ready UAT · 9 Testing · 5 Em Dev · 2 EF Ongoing · 0 N/I</span>
+    </div>
+    <div class="stream-stats">
+      <div class="stat-block">
+        <div class="stat-big">67%</div>
+        <div class="stat-label">Conclusão</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--green)">32<span style="font-size:14px;color:var(--muted)">/48</span></div>
+        <div class="stat-label">Ready for UAT</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--amber)">9</div>
+        <div class="stat-label">Testing</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--red-br)">0</div>
+        <div class="stat-label">Bloqueados</div>
+      </div>
+    </div>
+    <div class="pipe-track" id="pipe-rw">
+      <div class="pipe-seg pipe-ns"  style="width:0%" data-w="0%"></div>
+      <div class="pipe-seg pipe-ef"  style="width:0%" data-w="4%"></div>
+      <div class="pipe-seg pipe-dev" style="width:0%" data-w="10%"></div>
+      <div class="pipe-seg pipe-test"style="width:0%" data-w="19%"></div>
+      <div class="pipe-seg pipe-ready"style="width:0%"data-w="67%"></div>
+    </div>
+    <div class="pipe-legend">
+      <div class="leg"><div class="leg-dot" style="background:#333355"></div>Não iniciado (0)</div>
+      <div class="leg"><div class="leg-dot" style="background:#7B3F00"></div>EF Ongoing (2)</div>
+      <div class="leg"><div class="leg-dot" style="background:#224BFF"></div>Em Dev (5)</div>
+      <div class="leg"><div class="leg-dot" style="background:#FF9900"></div>Testing (9)</div>
+      <div class="leg"><div class="leg-dot" style="background:#00cc66"></div>Ready UAT (32)</div>
+    </div>
+    <div class="open-list">
+      <div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">GAP.AA.06</span>
+          <span class="o-owner">Tiago Benjamim</span>
+          <span class="badge-indev o-badge">IN PROGRESS</span>
+          <span class="o-dl"><span class="dl-urgent">⚡ 2026-06-24 (2d)</span></span>
+        </div><div class="open-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="o-nome">GAP.INT.018 (ASAPIO)</span>
+          <span class="o-owner">Carina Gonçalves</span>
+          <span class="badge-testing o-badge">TESTING</span>
+          <span class="o-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+        </div>
+    </div>
+  </div>
+
+  <!-- INVOICE HUB -->
+  <div class="stream-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="stream-title">Invoice Hub</span>
+      <span style="font-size:11px;color:var(--muted)">8 Done · 0 Em Prog · 0 Bloq</span>
+    </div>
+    <div class="stream-stats">
+      <div class="stat-block">
+        <div class="stat-big">89%</div>
+        <div class="stat-label">Done + Ready</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--text)">8<span style="font-size:14px;color:var(--muted)">/9</span></div>
+        <div class="stat-label">Target fechados</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-block">
+        <div class="stat-big" style="color:var(--red-br)">0</div>
+        <div class="stat-label">Bloqueados</div>
+      </div>
+    </div>
+    <div class="xp-track"><div class="xp-fill" id="xp-ih" style="width:0%"></div><span class="xp-pct">89%</span></div>
+    <div class="open-list">
+      <div class="open-row">
+          <span class="crit-dot crit-med"></span>
+          <span class="o-nome">Integração API Supplier MDM</span>
+          <span class="o-owner">InvoiceHub</span>
+          <span class="badge-ns o-badge">OPEN</span>
+          <span class="o-dl"><span class="dl-none">—</span></span>
+        </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- BOTTOM: TABBED PANEL -->
+<section class="bot" id="blocked-section">
+
+  <div class="blocked-panel" style="display:flex;flex-direction:column;gap:6px;">
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('bloqueados')">🔒 Bloqueados (4)</button>
+      <button class="tab" onclick="switchTab('owners')">👤 Por Owner (11)</button>
+    </div>
+    <div class="tab-panel active" id="tab-bloqueados">
+      <div class="blocked-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="b-stream">Core SAP</span>
+          <span class="b-nome">Configuração entidades legais DRC</span>
+          <span class="b-owner">👤 Ana Luísa Oliveira</span>
+          <span class="badge-blocked b-badge">BLOQUEADO</span>
+          <span class="b-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="blocked-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="b-stream">Core SAP</span>
+          <span class="b-nome">Declaração de IVA (periódica e anual)</span>
+          <span class="b-owner">👤 Ana Luísa Oliveira</span>
+          <span class="badge-blocked b-badge">BLOQUEADO</span>
+          <span class="b-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="blocked-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="b-stream">SD</span>
+          <span class="b-nome">🐛 GENT-6794: SAP-112 Impressão de um FT emitida no módulo </span>
+          <span class="b-owner">👤 Patricia Silva</span>
+          <span class="badge-blocked b-badge">BLOQUEADO</span>
+          <span class="b-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="blocked-row">
+          <span class="crit-dot crit-high"></span>
+          <span class="b-stream">AR</span>
+          <span class="b-nome">🐛 GENT-6685: Imagem visualizada não corresponde ao pretend</span>
+          <span class="b-owner">👤 Ricardo Martins</span>
+          <span class="badge-blocked b-badge">BLOQUEADO</span>
+          <span class="b-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+        </div>
+    </div>
+    <div class="tab-panel" id="tab-owners">
+      <div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Dalila Barbosa</span>
+            <span class="owner-count">4 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.TR.02</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.TR.07</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.GL.04</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.INT.030 (Inbound)</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Marcelo Bittencourt</span>
+            <span class="owner-count">3 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.DM.02</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.DM.03</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.INT.025 (Inbound)</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Sem owner</span>
+            <span class="owner-count">3 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.TR.05</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.IC.07</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-ok">2026-06-30</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.INT.007 (File)</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-ok">2026-07-06</span></span>
+            </div></div>
+        </div><div class="owner-card owner-urgent">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Márcia Nunes</span>
+            <span class="owner-count">2 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">Core SAP</span>
+              <span class="oi-nome">Validações e substituições</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">Core SAP</span>
+              <span class="oi-nome">Validações e substituições</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+            </div></div>
+        </div><div class="owner-card owner-urgent">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Ana Luísa Oliveira</span>
+            <span class="owner-count">2 em aberto</span>
+            <span class="owner-tags"><span class="owner-tag tag-bloq">🔒 2 bloq</span><span class="owner-tag tag-high">⚡ 2 High</span></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-high"></span>
+              <span class="oi-stream">Core SAP</span>
+              <span class="oi-nome">Configuração entidades legais DRC 🔒</span>
+              <span class="badge-blocked oi-badge">BLOQUEADO</span>
+              <span class="oi-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-high"></span>
+              <span class="oi-stream">Core SAP</span>
+              <span class="oi-nome">Declaração de IVA (periódica e anual) 🔒</span>
+              <span class="badge-blocked oi-badge">BLOQUEADO</span>
+              <span class="oi-dl"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Paulo Filho</span>
+            <span class="owner-count">2 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.AP.04</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.ARB2B.01</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Carina Gonçalves</span>
+            <span class="owner-count">2 em aberto</span>
+            <span class="owner-tags"><span class="owner-tag tag-high">⚡ 1 High</span></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-high"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.INT.018 (ASAPIO)</span>
+              <span class="badge-testing oi-badge">TESTING</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.INT.012 (ASAPIO)</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div></div>
+        </div><div class="owner-card owner-urgent">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Tiago Benjamim</span>
+            <span class="owner-count">1 em aberto</span>
+            <span class="owner-tags"><span class="owner-tag tag-high">⚡ 1 High</span></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-high"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.AA.06</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-urgent">⚡ 2026-06-24 (2d)</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 João Fernandes</span>
+            <span class="owner-count">1 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-low"></span>
+              <span class="oi-stream">RICEFWs</span>
+              <span class="oi-nome">GAP.AP.01</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-soon">2026-06-26 (4d)</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 Hugo Carvalho</span>
+            <span class="owner-count">1 em aberto</span>
+            <span class="owner-tags"><span class="owner-tag tag-high">⚡ 1 High</span></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-high"></span>
+              <span class="oi-stream">Core SAP</span>
+              <span class="oi-nome">Necessidade de mapear os Centros de custo antigos e a divisã</span>
+              <span class="badge-indev oi-badge">IN PROGRESS</span>
+              <span class="oi-dl"><span class="dl-ok">2026-06-30</span></span>
+            </div></div>
+        </div><div class="owner-card">
+          <div class="owner-hdr">
+            <span class="owner-name">👤 InvoiceHub</span>
+            <span class="owner-count">1 em aberto</span>
+            <span class="owner-tags"></span>
+          </div>
+          <div class="owner-items"><div class="owner-item">
+              <span class="crit-dot crit-med"></span>
+              <span class="oi-stream">Invoice Hub</span>
+              <span class="oi-nome">Integração API Supplier MDM</span>
+              <span class="badge-ns oi-badge">OPEN</span>
+              <span class="oi-dl"><span class="dl-none">—</span></span>
+            </div></div>
+        </div>
+    </div>
+  </div>
+
+  <div class="bugs-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="panel-title amber">🐛 UAT BUGS</span>
+      <span style="font-size:12px;font-weight:700;color:var(--green)">✅ 8/14 Done · 57%</span>
+    </div>
+    <div class="xp-track" style="height:10px;">
+      <div class="xp-fill" id="xp-uat" style="width:0%"></div>
+      <span class="xp-pct" style="font-size:9px;">57%</span>
+    </div>
+    <div class="bug-list">
+      <div class="bug-row bug-row-blocked">
+          <span class="prio-p1 bug-prio">High</span>
+          <span class="bug-stream">SD</span>
+          <span class="bug-desc">SAP-112 Impressão de um FT emitida no módulo SD</span>
+          <span class="badge-blocked bug-est">BLOQUEADO</span>
+          <span class="bug-owner">👤 Patricia Silva</span>
+          <span class="bug-eta"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div><div class="bug-row bug-row-blocked">
+          <span class="prio-p1 bug-prio">High</span>
+          <span class="bug-stream">AR</span>
+          <span class="bug-desc">Imagem visualizada não corresponde ao pretendido a enviar para o clien</span>
+          <span class="badge-blocked bug-est">BLOQUEADO</span>
+          <span class="bug-owner">👤 Ricardo Martins</span>
+          <span class="bug-eta"><span class="dl-soon">2026-06-26 (4d)</span></span>
+        </div><div class="bug-row bug-row-p1">
+          <span class="prio-p1 bug-prio">High</span>
+          <span class="bug-stream">GENT-6318</span>
+          <span class="bug-desc">Falta do GAP.AP.01</span>
+          <span class="badge-indev bug-est">IN PROGRESS</span>
+          <span class="bug-owner">👤 Ricardo Martins</span>
+          <span class="bug-eta"><span class="dl-soon">2026-06-26 (4d)</span></span>
+        </div><div class="bug-row">
+          <span class="prio-p2 bug-prio">Medium</span>
+          <span class="bug-stream">B2C</span>
+          <span class="bug-desc">SAP-894 Vale de Fornecedores</span>
+          <span class="badge-indev bug-est">IN PROGRESS</span>
+          <span class="bug-owner">👤 Ricardo Martins</span>
+          <span class="bug-eta"><span class="dl-soon">2026-06-26 (4d)</span></span>
+        </div><div class="bug-row">
+          <span class="prio-p2 bug-prio">Medium</span>
+          <span class="bug-stream">SD</span>
+          <span class="bug-desc">Fatura Valor de IVA</span>
+          <span class="badge-ns bug-est">ABERTO</span>
+          <span class="bug-owner">👤 —</span>
+          <span class="bug-eta"><span class="dl-none">—</span></span>
+        </div><div class="bug-row">
+          <span class="prio-p3 bug-prio">Low</span>
+          <span class="bug-stream">GENT-6572</span>
+          <span class="bug-desc">Falta de fomulários de ADS</span>
+          <span class="badge-indev bug-est">IN PROGRESS</span>
+          <span class="bug-owner">👤 Ricardo Martins</span>
+          <span class="bug-eta"><span class="dl-over">▲ 2026-06-19 (3d atraso)</span></span>
+        </div>
+    </div>
+    <div class="bug-add-hint">
+      Para registar bug: adiciona linha na sheet "BUGs UAT" do Excel → corre o script novamente
+    </div>
+  </div>
+
+</section>
+</div>
+
+<!-- MASCOT TOGGLE -->
+<button id="mascot-toggle" onclick="toggleMascot()">🧑‍🚀 ON</button>
+
+<!-- MASCOT -->
+<div id="mascot-wrap">
+  <div id="mascot-flipper" onclick="mascotClick()">
+  <svg id="mascot-svg" viewBox="0 0 100 155" xmlns="http://www.w3.org/2000/svg">
+    <!-- left arm -->
+    <g id="arm-l">
+      <rect x="4" y="82" width="23" height="13" rx="6" fill="#c8c8c8"/>
+      <circle cx="6" cy="88" r="7" fill="#b8b8b8"/>
+    </g>
+    <!-- right arm -->
+    <g id="arm-r">
+      <rect x="73" y="82" width="23" height="13" rx="6" fill="#c8c8c8"/>
+      <circle cx="94" cy="88" r="7" fill="#b8b8b8"/>
+    </g>
+    <!-- body -->
+    <rect x="27" y="78" width="46" height="55" rx="12" fill="#c8c8c8"/>
+    <rect x="34" y="86" width="32" height="30" rx="6" fill="#b4b4b4"/>
+    <text id="acn-symbol" x="50" y="106" font-family="Helvetica,Arial,sans-serif"
+          font-size="22" font-weight="900" fill="#A100FF" text-anchor="middle">&gt;</text>
+    <!-- legs -->
+    <rect id="leg-l" x="32" y="130" width="15" height="20" rx="5" fill="#b8b8b8"/>
+    <rect id="leg-r" x="53" y="130" width="15" height="20" rx="5" fill="#b8b8b8"/>
+    <!-- boots -->
+    <ellipse cx="39" cy="150" rx="13" ry="6" fill="#888"/>
+    <ellipse cx="62" cy="150" rx="13" ry="6" fill="#888"/>
+    <!-- helmet outer -->
+    <ellipse cx="50" cy="40" rx="30" ry="33" fill="#d6d6d6"/>
+    <ellipse cx="50" cy="40" rx="27" ry="30" fill="#cecece"/>
+    <!-- collar -->
+    <rect x="37" y="68" width="26" height="12" rx="6" fill="#aaa"/>
+    <!-- visor -->
+    <ellipse cx="50" cy="44" rx="21" ry="20" fill="#0d1f3c"/>
+    <ellipse cx="41" cy="34" rx="5" ry="8" fill="white" opacity="0.08"
+             transform="rotate(-20,41,34)"/>
+    <!-- ── HAPPY ── -->
+    <g id="face-happy" class="face-grp">
+      <circle cx="43" cy="41" r="4.5" fill="white"/>
+      <circle cx="57" cy="41" r="4.5" fill="white"/>
+      <circle cx="43.8" cy="42" r="2.2" fill="#111"/>
+      <circle cx="57.8" cy="42" r="2.2" fill="#111"/>
+      <circle cx="45" cy="40" r="1" fill="white"/>
+      <circle cx="59" cy="40" r="1" fill="white"/>
+      <path d="M 42 51 Q 50 58 58 51" stroke="white" stroke-width="2.2"
+            fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- ── NEUTRAL ── -->
+    <g id="face-neutral" class="face-grp">
+      <circle cx="43" cy="41" r="4.5" fill="white"/>
+      <circle cx="57" cy="41" r="4.5" fill="white"/>
+      <circle cx="43.5" cy="42" r="2.2" fill="#111"/>
+      <circle cx="57.5" cy="42" r="2.2" fill="#111"/>
+      <circle cx="45" cy="40" r="1" fill="white"/>
+      <circle cx="59" cy="40" r="1" fill="white"/>
+      <line x1="43" y1="53" x2="57" y2="53" stroke="white"
+            stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+    <!-- ── STRESSED ── -->
+    <g id="face-stressed" class="face-grp">
+      <circle cx="43" cy="41" r="4.5" fill="white"/>
+      <circle cx="57" cy="41" r="4.5" fill="white"/>
+      <circle cx="43" cy="43" r="2.2" fill="#111"/>
+      <circle cx="57" cy="43" r="2.2" fill="#111"/>
+      <path d="M 39 37 L 47 39" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M 53 39 L 61 37" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M 43 56 Q 50 51 57 56" stroke="white" stroke-width="2.2"
+            fill="none" stroke-linecap="round"/>
+      <ellipse cx="63" cy="33" rx="2" ry="3.2" fill="#66aaff" opacity="0.9"/>
+    </g>
+    <!-- ── CELEBRATE ── -->
+    <g id="face-celebrate" class="face-grp">
+      <circle cx="43" cy="41" r="5" fill="#FFD700"/>
+      <circle cx="43" cy="41" r="2.8" fill="#FFFBCC"/>
+      <line x1="43" y1="34" x2="43" y2="32" stroke="#FFD700" stroke-width="1.8"/>
+      <line x1="43" y1="48" x2="43" y2="50" stroke="#FFD700" stroke-width="1.8"/>
+      <line x1="36" y1="41" x2="34" y2="41" stroke="#FFD700" stroke-width="1.8"/>
+      <line x1="50" y1="41" x2="52" y2="41" stroke="#FFD700" stroke-width="1.8"/>
+      <circle cx="57" cy="41" r="5" fill="#FFD700"/>
+      <circle cx="57" cy="41" r="2.8" fill="#FFFBCC"/>
+      <line x1="57" y1="34" x2="57" y2="32" stroke="#FFD700" stroke-width="1.8"/>
+      <line x1="57" y1="48" x2="57" y2="50" stroke="#FFD700" stroke-width="1.8"/>
+      <line x1="50" y1="41" x2="48" y2="41" stroke="#FFD700" stroke-width="1.8"/>
+      <line x1="64" y1="41" x2="66" y2="41" stroke="#FFD700" stroke-width="1.8"/>
+      <path d="M 39 51 Q 50 63 61 51" stroke="white" stroke-width="2.8"
+            fill="rgba(255,255,255,0.25)" stroke-linecap="round"/>
+      <text x="24" y="24" font-size="9" fill="#FFD700"
+            style="animation:star-spin 0.8s ease-in-out infinite">★</text>
+      <text x="67" y="20" font-size="11" fill="#FFD700"
+            style="animation:star-spin 0.8s ease-in-out 0.2s infinite">★</text>
+      <text x="72" y="36" font-size="7" fill="#A100FF"
+            style="animation:star-spin 0.8s ease-in-out 0.4s infinite">✦</text>
+    </g>
+  </svg>
+  </div><!-- /mascot-flipper -->
+  <div id="mascot-bubble"><span id="mascot-bubble-text"></span></div>
+  <div id="mascot-tip">…</div>
+</div>
+
+<!-- ACHIEVEMENT OVERLAY -->
+<div class="ach-overlay" id="achOverlay">
+  <div class="ach-card">
+    <div class="ach-emoji" id="achEmoji">🎉</div>
+    <div class="ach-name" id="achName">—</div>
+    <div class="ach-item" id="achItem">—</div>
+    <div class="ach-state" id="achState">—</div>
+    <button class="ach-btn" onclick="nextAch()">Próximo ▶</button>
+  </div>
+</div>
+
+<script>
+// ── mascot ─────────────────────────────────────────────────────────────────────
+const OVERALL_PCT   = 81;
+const BLOCKED_COUNT = 4;
+const NEW_ACHIEVE   = 0;
+const MOOD_TIPS = {
+  happy:     '😊 Em boa forma! ' + OVERALL_PCT + '% concluído',
+  neutral:   '😐 Em progresso... ' + OVERALL_PCT + '%',
+  stressed:  '😟 Atenção! ' + BLOCKED_COUNT + ' bloqueados',
+  celebrate: '🎉 Novo item fechado!',
+};
+let baseMood   = 'happy';
+let mascotX    = 0;
+let mascotY    = 0;
+let mWalking   = false;
+let mActive    = true;
+let mWalkTimer = null;
+
+function setMascotMood(mood) {
+  document.querySelectorAll('.face-grp').forEach(g => g.classList.remove('active'));
+  const f = document.getElementById('face-' + mood);
+  if (f) f.classList.add('active');
+  const tip = document.getElementById('mascot-tip');
+  if (tip) tip.textContent = MOOD_TIPS[mood] || '';
+}
+
+function celebrateMascot() {
+  const svg  = document.getElementById('mascot-svg');
+  const flip = document.getElementById('mascot-flipper');
+  if (!svg) return;
+  if (mWalking) {
+    flip.classList.remove('walking');
+    svg.style.animation = '';
+    mWalking = false;
+  }
+  setMascotMood('celebrate');
+  svg.classList.remove('celebrating');
+  void svg.offsetWidth;
+  svg.classList.add('celebrating');
+  setTimeout(() => {
+    svg.classList.remove('celebrating');
+    setMascotMood(baseMood);
+  }, 1700);
+}
+
+function mascotClick() {
+  if (typeof ACHIEVEMENTS !== 'undefined' && ACHIEVEMENTS.length > 0) {
+    showAch(achIdx);
+  } else {
+    celebrateMascot();
+    showTip(TIPS[tipIdx]);
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(nextTip, 22000);
+  }
+}
+
+// ── balloon tips ───────────────────────────────────────────────────────────────
+const TIPS = ["🚀 14 dias para o go-live de 6 Jul — vamos!", "💪 81% concluído. A reta final é nossa!", "✅ Core SAP a 91% — força equipa!", "📊 RICEFWs a 67% — cada item conta!", "🔥 Invoice Hub a 89% — não parem agora!", "🎯 22 itens para fechar. Conseguimos!", "⚡ Cada item fechado = um passo mais perto do 6 Jul!", "🌟 Esta equipa é imbatível. Juntos chegamos lá!", "🛸 Go-live à vista — foco total!", "🏁 A meta está quase ali. Não parem agora!", "🔑 Quem fechar o próximo item ganha pontos de astronauta! 🧑‍🚀", "🍰 Há bolos hoje??", "Ricardo, queres ver a minha dança nova? Então fecha um item 🕺", "☕ Pausa para café autorizada... depois de fechar um item.", "Dalila, o astronauta está de olho em ti 👀", "Alguém viu o meu capacete? Estava aqui há bocado... 🪖", "🎵 *toca música de contagem decrescente* 14 dias, malta!", "Marcelo, és o meu herói favorito desta semana 🦸", "Psst... quem fechar 3 itens hoje fica isento de reuniões. (mentira, mas fecha na mesma 😅)", "Saudades do escritório? Eu não. Mas fecha o item à mesma 🏠", "🌮 Sexta-feira é day das celebrações. Mas só se fecharmos isto.", "Hugo, João, Diogo — eu sei que estão aí! 👋", "Vamos trabalhar de forma colaborativa! 🤝", "O Go-Live é qualquer coisa... 🚀😏", "👋 Dalila Barbosa, faltam-te 4 itens. Vai!", "👋 Marcelo Bittencourt, faltam-te 3 itens. Vai!", "👋 Márcia Nunes, faltam-te 2 itens. Vai!", "👋 Ana Luísa Oliveira, faltam-te 2 itens. Vai!", "👋 Paulo Filho, faltam-te 2 itens. Vai!", "👋 Carina Gonçalves, faltam-te 2 itens. Vai!", "🐛 6 bugs UAT em aberto — cada fix aproxima-nos!", "🔓 4 bloqueados à espera — vamos desbloqueá-los!"];
+let tipIdx = Math.floor(Math.random() * TIPS.length);
+let tipTimer = null;
+let tipHideTimer = null;
+
+function showTip(text) {
+  const bub = document.getElementById('mascot-bubble');
+  const txt = document.getElementById('mascot-bubble-text');
+  if (!bub || !txt || !mActive) return;
+  clearTimeout(tipHideTimer);
+  txt.textContent = text;
+  bub.style.display = 'block';
+  bub.style.animation = 'bubble-pop 0.35s cubic-bezier(0.2,0,0.3,1.5) forwards';
+  tipHideTimer = setTimeout(() => {
+    bub.style.animation = 'bubble-fade 0.5s ease-in forwards';
+    setTimeout(() => { bub.style.display = 'none'; }, 480);
+  }, 4500);
+}
+
+function nextTip() {
+  if (!mActive) return;
+  tipIdx = (tipIdx + 1) % TIPS.length;
+  showTip(TIPS[tipIdx]);
+  scheduleTip();
+}
+
+function scheduleTip() {
+  clearTimeout(tipTimer);
+  if (!mActive) return;
+  const delay = 18000 + Math.random() * 12000;
+  tipTimer = setTimeout(nextTip, delay);
+}
+
+// ── walk logic ─────────────────────────────────────────────────────────────────
+const BLOCKED_NAMES = ["Configuração entidades legais ", "Declaração de IVA (periódica e", "🐛 GENT-6794: SAP-112 Impressão", "🐛 GENT-6685: Imagem visualizad"];
+
+function mScheduleWalk() {
+  clearTimeout(mWalkTimer);
+  if (!mActive) return;
+  const delay = 10000 + Math.random() * 14000;
+  const r = Math.random();
+  let fn;
+  if      (r < 0.28 && BLOCKED_NAMES.length > 0) fn = mDoInteractionWalk;
+  else if (r < 0.55) fn = mDoClimb;
+  else               fn = mDoWalk;
+  mWalkTimer = setTimeout(fn, delay);
+}
+
+function mDropToGround(cb) {
+  const wrap = document.getElementById('mascot-wrap');
+  if (mascotY > 5) {
+    wrap.style.transition = 'bottom 350ms cubic-bezier(0.4,0,1,1)';
+    wrap.style.bottom = '0px'; mascotY = 0;
+    setTimeout(cb, 400);
+  } else cb();
+}
+
+function mDoWalk() {
+  if (mWalking) return;
+  if (mascotY > 5) { mDropToGround(mDoWalk); return; }
+  mWalking = true;
+  const wrap  = document.getElementById('mascot-wrap');
+  const flip  = document.getElementById('mascot-flipper');
+  const svg   = document.getElementById('mascot-svg');
+  const minX  = 20;
+  const maxX  = window.innerWidth - 100;
+  const targX = minX + Math.random() * (maxX - minX);
+  const goLeft = targX < mascotX;
+  const dist  = Math.abs(targX - mascotX);
+  const dur   = Math.max(2000, dist / 70 * 1000);
+
+  if (goLeft) flip.classList.add('flipped');
+  else        flip.classList.remove('flipped');
+  flip.classList.add('walking');
+  svg.style.animation = 'walk-bob 0.38s ease-in-out infinite';
+
+  wrap.style.transition = `left ${dur}ms linear`;
+  wrap.style.left = targX + 'px';
+  mascotX = targX;
+
+  setTimeout(() => {
+    flip.classList.remove('walking');
+    svg.style.animation = '';
+    mWalking = false;
+    mScheduleWalk();
+  }, dur);
+}
+
+function mDoInteractionWalk() {
+  if (mWalking) return;
+  mWalking = true;
+  const wrap  = document.getElementById('mascot-wrap');
+  const flip  = document.getElementById('mascot-flipper');
+  const svg   = document.getElementById('mascot-svg');
+  const nome  = BLOCKED_NAMES[Math.floor(Math.random() * BLOCKED_NAMES.length)];
+
+  // Step 1 — walk to pickup spot (random left half)
+  const pickX  = 80 + Math.random() * (window.innerWidth * 0.4);
+  const dist1  = Math.abs(pickX - mascotX);
+  const dur1   = Math.max(1500, dist1 / 70 * 1000);
+  const goLeft1 = pickX < mascotX;
+
+  if (goLeft1) flip.classList.add('flipped'); else flip.classList.remove('flipped');
+  flip.classList.add('walking');
+  svg.style.animation = 'walk-bob 0.38s ease-in-out infinite';
+  wrap.style.transition = `left ${dur1}ms linear`;
+  wrap.style.left = pickX + 'px';
+  mascotX = pickX;
+
+  setTimeout(() => {
+    // Step 2 — grab tag
+    flip.classList.remove('walking');
+    svg.style.animation = '';
+    svg.classList.add('jumping'); // quick grab jump
+    setTimeout(() => svg.classList.remove('jumping'), 750);
+
+    const tag = document.createElement('div');
+    tag.className = 'm-tag';
+    tag.textContent = '🔒 ' + nome;
+    document.body.appendChild(tag);
+    const tagOffR = 84, tagOffL = -tag.offsetWidth - 6 || -80;
+    const tagBottom = 52;
+    tag.style.bottom  = tagBottom + 'px';
+    tag.style.left    = (mascotX + (goLeft1 ? tagOffL : tagOffR)) + 'px';
+    tag.style.animation = 'tag-grab 0.35s ease-out forwards';
+
+    setTimeout(() => {
+      // Step 3 — walk carrying tag to random destination
+      const dropX  = 100 + Math.random() * (window.innerWidth - 220);
+      const dist2  = Math.abs(dropX - mascotX);
+      const dur2   = Math.max(2000, dist2 / 65 * 1000);
+      const goLeft2 = dropX < mascotX;
+
+      if (goLeft2) flip.classList.add('flipped'); else flip.classList.remove('flipped');
+      flip.classList.add('walking');
+      svg.style.animation = 'walk-bob 0.38s ease-in-out infinite';
+
+      wrap.style.transition = `left ${dur2}ms linear`;
+      wrap.style.left = dropX + 'px';
+
+      const tagTargetX = dropX + (goLeft2 ? tagOffL : tagOffR);
+      tag.style.transition = `left ${dur2}ms linear`;
+      tag.style.left = tagTargetX + 'px';
+      mascotX = dropX;
+
+      setTimeout(() => {
+        // Step 4 — throw tag
+        flip.classList.remove('walking');
+        svg.style.animation = '';
+        tag.style.transition = 'none';
+        tag.style.animation = goLeft2 ? 'tag-throw-l 0.7s ease-in forwards'
+                                       : 'tag-throw-r 0.7s ease-in forwards';
+        // little throw jump
+        svg.classList.add('jumping');
+        setTimeout(() => svg.classList.remove('jumping'), 750);
+        setTimeout(() => { tag.remove(); mWalking = false; mScheduleWalk(); }, 750);
+      }, dur2);
+    }, 700); // after grab anim
+  }, dur1);
+}
+
+// ── climb & interact ───────────────────────────────────────────────────────────
+function mPokeEl(el) {
+  if (!el) return;
+  el.style.transition = 'transform 0.15s ease-in-out';
+  el.style.transform  = 'scale(1.45) rotate(9deg)';
+  setTimeout(() => {
+    el.style.transform = 'scale(0.88) rotate(-5deg)';
+    setTimeout(() => {
+      el.style.transform = '';
+      setTimeout(() => el.style.transition = '', 200);
+    }, 150);
+  }, 150);
+}
+
+function mDoClimb() {
+  if (mWalking) return;
+  if (mascotY > 5) { mDropToGround(mDoClimb); return; }
+
+  // collect climbable targets (stream cards + pipe bars + stat blocks)
+  const targets = [];
+  document.querySelectorAll('.stream-card, .pipe-track, .xp-track').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.top > 80 && r.bottom < window.innerHeight - 60 && r.width > 80) {
+      const surfaceBot = window.innerHeight - r.bottom + 8; // stand on bottom edge of element
+      targets.push({ el, surfaceBot,
+        cx: r.left + r.width * (0.25 + Math.random() * 0.5),
+        rLeft: r.left, rRight: r.right,
+        type: el.classList.contains('stream-card') ? 'card' : 'bar'
+      });
+    }
+  });
+  if (!targets.length) { mDoWalk(); return; }
+
+  mWalking = true;
+  const t    = targets[Math.floor(Math.random() * targets.length)];
+  const wrap = document.getElementById('mascot-wrap');
+  const flip = document.getElementById('mascot-flipper');
+  const svg  = document.getElementById('mascot-svg');
+
+  // ① walk to base x
+  const dist1  = Math.abs(t.cx - mascotX);
+  const dur1   = Math.max(1200, dist1 / 75 * 1000);
+  const goL1   = t.cx < mascotX;
+  if (goL1) flip.classList.add('flipped'); else flip.classList.remove('flipped');
+  flip.classList.add('walking');
+  svg.style.animation = 'walk-bob 0.38s ease-in-out infinite';
+  wrap.style.transition = `left ${dur1}ms linear`;
+  wrap.style.left = t.cx + 'px'; mascotX = t.cx;
+
+  setTimeout(() => {
+    flip.classList.remove('walking'); svg.style.animation = '';
+    // ② jump up onto element
+    wrap.style.transition = 'bottom 550ms cubic-bezier(0.2,0,0.3,1.5)';
+    wrap.style.bottom = t.surfaceBot + 'px'; mascotY = t.surfaceBot;
+
+    setTimeout(() => {
+      // ③ walk across element surface
+      const walkTo  = Math.min(Math.max(t.rLeft + 20, t.cx + (Math.random()>.5 ? 100 : -100)), t.rRight - 90);
+      const dist2   = Math.abs(walkTo - mascotX);
+      const dur2    = Math.max(700, dist2 / 55 * 1000);
+      const goL2    = walkTo < mascotX;
+      if (goL2) flip.classList.add('flipped'); else flip.classList.remove('flipped');
+      flip.classList.add('walking');
+      svg.style.animation = 'walk-bob 0.38s ease-in-out infinite';
+      wrap.style.transition = `left ${dur2}ms linear`;
+      wrap.style.left = walkTo + 'px'; mascotX = walkTo;
+
+      // ④ interact mid-walk
+      setTimeout(() => {
+        if (t.type === 'card') {
+          const statEl = t.el.querySelector('.stat-big');
+          mPokeEl(statEl);
+        } else {
+          svg.classList.add('jumping');
+          setTimeout(() => svg.classList.remove('jumping'), 750);
+        }
+      }, dur2 * 0.45);
+
+      setTimeout(() => {
+        flip.classList.remove('walking'); svg.style.animation = '';
+        // ⑤ jump back down
+        wrap.style.transition = 'bottom 380ms cubic-bezier(0.4,0,0.8,1.1)';
+        wrap.style.bottom = '0px'; mascotY = 0;
+        setTimeout(() => { mWalking = false; mScheduleWalk(); }, 430);
+      }, dur2 + 150);
+    }, 600);
+  }, dur1 + 100);
+}
+
+// ── toggle ──────────────────────────────────────────────────────────────────────
+function toggleMascot() {
+  mActive = !mActive;
+  const wrap = document.getElementById('mascot-wrap');
+  const btn  = document.getElementById('mascot-toggle');
+  if (mActive) {
+    wrap.style.display = '';
+    btn.textContent = '🧑‍🚀 ON';
+    btn.classList.remove('off');
+    mInitPosition();
+    mScheduleTrick();
+    setTimeout(() => { showTip(TIPS[tipIdx]); scheduleTip(); }, 1500);
+    localStorage.setItem('mascotActive','1');
+  } else {
+    wrap.style.display = 'none';
+    btn.textContent = '🧑‍🚀 OFF';
+    btn.classList.add('off');
+    clearTimeout(mWalkTimer);
+    clearTimeout(tipTimer);
+    clearTimeout(tipHideTimer);
+    const bub = document.getElementById('mascot-bubble');
+    if (bub) bub.style.display = 'none';
+    mWalking = false;
+    localStorage.setItem('mascotActive','0');
+  }
+}
+
+function mInitPosition() {
+  const wrap = document.getElementById('mascot-wrap');
+  mascotX = window.innerWidth - 100;
+  mascotY = 0;
+  wrap.style.left   = mascotX + 'px';
+  wrap.style.bottom = '0px';
+  mScheduleWalk();
+}
+
+window.addEventListener('resize', () => {
+  const maxX = window.innerWidth - 100;
+  if (mascotX > maxX) {
+    mascotX = maxX;
+    const wrap = document.getElementById('mascot-wrap');
+    wrap.style.transition = 'none';
+    wrap.style.left = mascotX + 'px';
+  }
+});
+
+// ── idle tricks ────────────────────────────────────────────────────────────────
+function mScheduleTrick() {
+  setTimeout(mDoTrick, 8000 + Math.random() * 14000);
+}
+
+function mDoTrick() {
+  const svg = document.getElementById('mascot-svg');
+  if (!svg || mWalking || svg.classList.contains('celebrating')) {
+    mScheduleTrick(); return;
+  }
+  const pick = Math.random();
+  if (pick < 0.55) {
+    // jump
+    svg.classList.add('jumping');
+    setTimeout(() => { svg.classList.remove('jumping'); mScheduleTrick(); }, 800);
+  } else {
+    // handstand
+    svg.classList.add('handstanding');
+    setTimeout(() => { svg.classList.remove('handstanding'); mScheduleTrick(); }, 2700);
+  }
+}
+
+function initMascot() {
+  if (OVERALL_PCT >= 70 && BLOCKED_COUNT <= 4) baseMood = 'happy';
+  else if (OVERALL_PCT >= 40) baseMood = 'neutral';
+  else baseMood = 'stressed';
+  setMascotMood(baseMood);
+  if (NEW_ACHIEVE > 0) setTimeout(celebrateMascot, 1900);
+  if (localStorage.getItem('mascotActive') === '0') {
+    mActive = false;
+    const wrap = document.getElementById('mascot-wrap');
+    if (wrap) wrap.style.display = 'none';
+    const btn = document.getElementById('mascot-toggle');
+    if (btn) { btn.textContent = '🧑‍🚀 OFF'; btn.classList.add('off'); }
+    return;
+  }
+  mInitPosition();
+  mScheduleTrick();
+  setTimeout(() => { showTip(TIPS[tipIdx]); scheduleTip(); }, 3500);
+}
+document.addEventListener('DOMContentLoaded', initMascot);
+
+// ── countdown ──────────────────────────────────────────────────────────────────
+function updateCD() {
+  const gl = new Date("2026-07-06T00:00:00");
+  const now = new Date();
+  const diff = gl - now;
+  if (diff <= 0) { document.getElementById('cd').textContent = "GO LIVE! 🚀"; return; }
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor((diff%86400000)/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  const s = Math.floor((diff%60000)/1000);
+  document.getElementById('cd').textContent =
+    d + "d " + String(h).padStart(2,'0') + "h " +
+    String(m).padStart(2,'0') + "m " + String(s).padStart(2,'0') + "s";
+}
+setInterval(updateCD, 1000); updateCD();
+
+// ── animate bars on load ───────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('xp-cs').style.width  = '91%';
+    document.getElementById('xp-ih').style.width  = '89%';
+    document.getElementById('xp-uat').style.width = '57%';
+    document.querySelectorAll('#pipe-rw .pipe-seg').forEach(s => {
+      s.style.width = s.dataset.w;
+    });
+  }, 200);
+
+  // show achievement button if any
+  const achBtn = document.getElementById('achBtn');
+  if (achBtn) achBtn.style.display = 'block';
+
+  // auto-show first achievement after bars animate
+  if (ACHIEVEMENTS.length) {
+    setTimeout(() => showAch(0), 1500);
+  }
+});
+
+// ── scroll to blocked ──────────────────────────────────────────────────────────
+function scrollToBlocked() {
+  document.getElementById('blocked-section').scrollIntoView({behavior:'smooth'});
+  switchTab('bloqueados');
+}
+
+// ── tabs ───────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── achievements ───────────────────────────────────────────────────────────────
+const ACHIEVEMENTS = [];
+let achIdx = 0;
+const emojis = ['🎉','🏆','⚡','🔥','💪','✅','🚀','🌟'];
+
+function fireConfetti() {
+  const colors = ['#A100FF','#7500C0','#00cc66','#FF9900','#ffffff'];
+  confetti({ particleCount: 120, spread: 80, origin: { y: 0.55 }, colors });
+  setTimeout(() => confetti({ particleCount: 60, angle: 60,  spread: 55, origin: { x: 0, y: 0.6 }, colors }), 250);
+  setTimeout(() => confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors }), 400);
+  celebrateMascot();
+}
+
+function showAch(idx) {
+  if (!ACHIEVEMENTS.length) return;
+  achIdx = idx % ACHIEVEMENTS.length;
+  const a = ACHIEVEMENTS[achIdx];
+  document.getElementById('achEmoji').textContent = emojis[achIdx % emojis.length];
+  document.getElementById('achName').textContent  = a.owner || 'Equipa';
+  document.getElementById('achItem').textContent  = a.nome;
+  document.getElementById('achState').textContent = '✅ ' + a.estado;
+  document.getElementById('achOverlay').classList.add('show');
+  fireConfetti();
+  speakAch(a);
+}
+
+function nextAch() {
+  achIdx++;
+  if (achIdx >= ACHIEVEMENTS.length) {
+    document.getElementById('achOverlay').classList.remove('show');
+    return;
+  }
+  showAch(achIdx);
+}
+
+function speakAch(a) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const owner = a.owner && a.owner !== '—' ? a.owner.split(' ')[0] : 'Equipa';
+  const state = a.estado.toLowerCase().includes('done') ? 'Done' : 'Ready for UAT';
+  const msg = new SpeechSynthesisUtterance(
+    `Parabéns ${owner}! Mais um fechado. ${state}!`
+  );
+  msg.lang  = 'pt-PT';
+  msg.rate  = 0.95;
+  msg.pitch = 1.1;
+  // pick a Portuguese voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const ptVoice = voices.find(v => v.lang.startsWith('pt'));
+  if (ptVoice) msg.voice = ptVoice;
+  window.speechSynthesis.speak(msg);
+}
+
+
+// close overlay clicking outside card
+document.getElementById('achOverlay').addEventListener('click', function(e) {
+  if (e.target === this) {
+    this.classList.remove('show');
+    window.speechSynthesis && window.speechSynthesis.cancel();
+  }
+});
+</script>
+</body>
+</html>
